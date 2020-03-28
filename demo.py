@@ -41,9 +41,65 @@ def yield_images_from_camera():
 
         while True:
             ret, img = cap.read()
+            img=cv2.imread('test.jpg')
             if not ret:
                 raise RuntimeError("Failed to capture image")
             yield img
+
+
+def run_file(filePath):
+    args = sys.argv[1:]
+    multiple_targets = '--multiple' in args
+    single_or_multiple = 'multiple faces' if multiple_targets else 'single face'
+    model = get_trained_model()
+    print
+    'Loading model to detect BMI of %s...' % single_or_multiple
+
+    detector = dlib.get_frontal_face_detector()
+    img = cv2.imread(filePath)
+    input_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    img_h, img_w, _ = np.shape(input_img)
+    detected = detector(input_img, 1)
+    faces = np.empty((len(detected), config.RESNET50_DEFAULT_IMG_WIDTH, config.RESNET50_DEFAULT_IMG_WIDTH, 3))
+
+    NUMBER_OF_FRAMES_IN_AVG = 20
+    last_seen_bmis = []
+
+    if len(detected) > 0:
+        for i, d in enumerate(detected):
+            x1, y1, x2, y2, w, h = d.left(), d.top(), d.right() + 1, d.bottom() + 1, d.width(), d.height()
+            xw1 = max(int(x1 - config.MARGIN * w), 0)
+            yw1 = max(int(y1 - config.MARGIN * h), 0)
+            xw2 = min(int(x2 + config.MARGIN * w), img_w - 1)
+            yw2 = min(int(y2 + config.MARGIN * h), img_h - 1)
+            cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 0), 2)
+            faces[i, :, :, :] = cv2.resize(img[yw1:yw2 + 1, xw1:xw2 + 1, :], (
+            config.RESNET50_DEFAULT_IMG_WIDTH, config.RESNET50_DEFAULT_IMG_WIDTH)) / 255.00
+
+        predictions = model.predict(faces)
+
+
+
+        return predictions
+
+        #if multiple_targets:
+        #    for i, d in enumerate(detected):
+        #        label = str(predictions[i][0])
+        #        draw_label(img, (d.left(), d.top()), label)
+
+        #else:
+        #    last_seen_bmis.append(predictions[0])
+        #    if len(last_seen_bmis) > NUMBER_OF_FRAMES_IN_AVG:
+        #        last_seen_bmis.pop(0)
+        #    elif len(last_seen_bmis) < NUMBER_OF_FRAMES_IN_AVG:
+        #        None
+
+        #    avg_bmi = sum(last_seen_bmis) / float(NUMBER_OF_FRAMES_IN_AVG)
+        #    label = str(avg_bmi)
+        #    draw_label(img, (d.left(), d.top()), label)
+
+
+
 
 
 def run_demo():
@@ -76,6 +132,7 @@ def run_demo():
 
             predictions = model.predict(faces)
 
+
             if multiple_targets:
                 for i, d in enumerate(detected):
                     label = str(predictions[i][0])
@@ -90,6 +147,7 @@ def run_demo():
                 label = str(avg_bmi)
                 draw_label(img, (d.left(), d.top()), label)
 
+
         cv2.imshow('result', img)
         key = cv2.waitKey(30)
 
@@ -98,4 +156,8 @@ def run_demo():
 
 
 if __name__ == '__main__':
-    run_demo()
+    args = sys.argv[1:]
+    filePath =args[1]
+    #run_demo()
+    run_file(filePath)
+

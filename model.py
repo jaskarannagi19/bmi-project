@@ -2,9 +2,11 @@
 from tensorflow.python.keras.models import Model
 from tensorflow.python.keras.applications import ResNet50
 from tensorflow.python.keras.layers import Dense
+import  tensorflow as tf
 import config
 
 def get_age_model():
+    tf.keras.backend.clear_session()
 
     age_model = ResNet50(
         include_top=False,
@@ -13,6 +15,8 @@ def get_age_model():
         pooling='avg'
     )
 
+    print(age_model)
+
     prediction = Dense(units=101,
                        kernel_initializer='he_normal',
                        use_bias=False,
@@ -20,11 +24,12 @@ def get_age_model():
                        name='pred_age')(age_model.output)
 
     age_model = Model(inputs=age_model.input, outputs=prediction)
+
+
     return age_model
 
 
 def get_model(ignore_age_weights=False):
-
     base_model = get_age_model()
     if not ignore_age_weights:
         base_model.load_weights(config.AGE_TRAINED_WEIGHTS_FILE)
